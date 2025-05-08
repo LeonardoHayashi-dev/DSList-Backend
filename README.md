@@ -1,3 +1,153 @@
+# Projeto DSList - Intensivão Java Spring
+
+**1. Perdeu alguma aula ou material de apoio?**
+
+Inscreva-se para receber os conteúdos no seu email:
+
+https://devsuperior.com.br
+
+    ATENÇÃO: os conteúdos ficarão disponíveis somente até domingo. Então organize-se, e bora pra cima! 
+
+**2. Tem alguma dúvida?**
+
+Envie uma mensagem pra gente no email que chegou pra você no ato da sua inscrição.
+
+## Calendário
+
+Os conteúdos ficarão temporariamente disponíveis no nosso website.
+
+Horário: cada aula será liberada por volta das 9h, somente para quem estiver inscrito no treinamento. Fica de olho no seu email, Whatsapp ou Telegram.
+
+| Dia / horário  | Conteúdo |
+| ------------- | ------------- |
+| Segunda-feira 9h | Aula 1: Projeto estruturado |
+| Terça-feira 9h | Aula 2: Domínio e consultas |
+| Quarta-feira 9h | Aula 3: Homologação e CORS |
+| Quinta-feira 9h | Aula 4: Endpoint especial |
+| Sexta-feira 9h | Aula 5: Resumão e reforço do aprendizado
+
+## Modelo de domínio DSList
+
+![Modelo de domínio DSList](https://raw.githubusercontent.com/devsuperior/java-spring-dslist/main/resources/dslist-model.png)
+
+## Trechos de código
+
+### Plug-in Maven
+
+```xml
+<plugin>
+	<groupId>org.apache.maven.plugins</groupId>
+	<artifactId>maven-resources-plugin</artifactId>
+	<version>3.1.0</version> <!--$NO-MVN-MAN-VER$ -->
+</plugin>
+```
+
+### application.properties
+
+```
+spring.profiles.active=${APP_PROFILE:test}
+spring.jpa.open-in-view=false
+
+cors.origins=${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+```
+
+### application-test.properties
+
+```
+# H2 Connection
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.username=sa
+spring.datasource.password=
+
+# H2 Client
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+
+# Show SQL
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+```
+
+### application-dev.properties
+
+```
+#spring.jpa.properties.jakarta.persistence.schema-generation.create-source=metadata
+#spring.jpa.properties.jakarta.persistence.schema-generation.scripts.action=create
+#spring.jpa.properties.jakarta.persistence.schema-generation.scripts.create-target=create.sql
+#spring.jpa.properties.hibernate.hbm2ddl.delimiter=;
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/dscatalog
+spring.datasource.username=postgres
+spring.datasource.password=1234567
+
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.properties.hibernate.jdbc.lob.non_contextual_creation=true
+spring.jpa.hibernate.ddl-auto=none
+```
+
+### application-prod.properties
+```
+spring.datasource.url=${DB_URL}
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.properties.hibernate.jdbc.lob.non_contextual_creation=true
+spring.jpa.hibernate.ddl-auto=none
+```
+
+### system.properties
+```
+java.runtime.version=17
+```
+
+### WebConfig
+
+```java
+@Configuration
+public class WebConfig {
+
+	@Value("${cors.origins}")
+	private String corsOrigins;
+	
+	@Bean
+	public WebMvcConfigurer corsConfigurer() {
+		return new WebMvcConfigurer() {
+			@Override
+			public void addCorsMappings(CorsRegistry registry) {
+				registry.addMapping("/**").allowedMethods("*").allowedOrigins(corsOrigins);
+			}
+		};
+	}
+	
+}
+```
+
+### GameRepository
+
+```java
+@Query(nativeQuery = true, value = """
+		SELECT tb_game.id, tb_game.title, tb_game.game_year AS `year`, tb_game.img_url AS imgUrl,
+		tb_game.short_description AS shortDescription, tb_belonging.position
+		FROM tb_game
+		INNER JOIN tb_belonging ON tb_game.id = tb_belonging.game_id
+		WHERE tb_belonging.list_id = :listId
+		ORDER BY tb_belonging.position
+			""")
+List<GameMinProjection> searchByList(Long listId);
+```
+
+### GameListRepository
+
+```java
+@Modifying
+@Query(nativeQuery = true, value = "UPDATE tb_belonging SET position = :newPosition WHERE list_id = :listId AND game_id = :gameId")
+void updateBelongingPosition(Long listId, Long gameId, Integer newPosition);
+```
+
+### import.sql
+
+```sql
 INSERT INTO tb_game_list (name) VALUES ('Aventura e RPG');
 INSERT INTO tb_game_list (name) VALUES ('Jogos de plataforma');
 
@@ -23,3 +173,8 @@ INSERT INTO tb_belonging (list_id, game_id, position) VALUES (2, 7, 1);
 INSERT INTO tb_belonging (list_id, game_id, position) VALUES (2, 8, 2);
 INSERT INTO tb_belonging (list_id, game_id, position) VALUES (2, 9, 3);
 INSERT INTO tb_belonging (list_id, game_id, position) VALUES (2, 10, 4);
+```
+
+### Script Docker Compose
+
+https://gist.github.com/acenelio/5e40b27cfc40151e36beec1e27c4ff71
